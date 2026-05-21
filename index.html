@@ -1,81 +1,81 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-    <title>Streaming App</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TV Stream Player - Reproductor IPTV</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
-    <style>
-        /* Custom CSS to adjust layout */
-        #playlist {
-            background-color: #f8f9fa;
-            padding: 15px;
-            max-height: 100vh; /* Set a maximum height equal to the viewport height */
-            overflow-y: auto; /* Add a vertical scrollbar when needed */
-        }
-
-        #videoPlayer {
-            width: 100%;
-            height: auto;
-        }
-
-        .input-group-btn {
-            display: flex;
-            align-items: center;
-        }
-
-        .btn-go {
-            margin-left: 10px;
-        }
-
-        .tv-logo {
-            width: 100px;
-        }
-
-        /* Apply subtle glow effect on hover */
-        .channel:hover {
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-            transition: box-shadow 0.3s ease-in-out;
-        }
-
-        /* Change cursor to pointer on hover */
-        .channel:hover {
-            cursor: pointer;
-        }
-
-        /* CSS for the billed message */
-        .billed-msg {
-            position: fixed;
-            bottom: 10px;
-            right: 10px;
-            background-color: #333;
-            color: white;
-            padding: 5px 10px;
-            border-radius: 5px;
-        }
-
-        /* Search bar styles */
-        .search-bar {
-            margin-bottom: 10px;
-        }
-    </style>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
-    <div class="container-fluid">
-        <div class="row d-flex justify-content-center">
-            <div class="col-md-2 d-none" id="playlist">
-                 <input type="text" id="searchInput" class="form-control search-bar" placeholder="Search Channel">
-                <!-- Playlist items will be added here -->
+    <div class="app-container">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="header-content">
+                <div class="logo-section">
+                    <i class="bi bi-tv-fill logo-icon"></i>
+                    <h1 class="app-title">TV Stream Player</h1>
+                </div>
+                <div class="proxy-toggle-section">
+                    <span class="proxy-label">Proxy</span>
+                    <button id="proxyToggle" class="proxy-toggle-btn" title="Activar/Desactivar Proxy">
+                        <i class="bi bi-shield-slash-fill proxy-icon-off"></i>
+                        <i class="bi bi-shield-check-fill proxy-icon-on"></i>
+                    </button>
+                    <span id="proxyStatus" class="proxy-status status-off">OFF</span>
+                </div>
             </div>
-            <div class="col-md-10">
-                <div class="input-group mb-3 mt-3">
-                    <input type="text" id="m3uURL" class="form-control" placeholder="Enter M3U URL">
-                    <div class="input-group-btn">
-                        <button id="loadM3U" class="btn btn-primary btn-go">Go</button>
+        </header>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <div class="row d-flex justify-content-center h-100">
+                <!-- Playlist Sidebar -->
+                <div class="col-md-3 d-none" id="playlist">
+                    <div class="playlist-container">
+                        <div class="search-container">
+                            <i class="bi bi-search search-icon"></i>
+                            <input type="text" id="searchInput" class="form-control search-bar" placeholder="Buscar canal...">
+                        </div>
+                        <div class="channel-count">
+                            <span id="channelCount">0</span> canales
+                        </div>
+                        <div id="playlistItems" class="playlist-items">
+                            <!-- Playlist items will be added here -->
+                        </div>
                     </div>
                 </div>
-                <video id="videoPlayer" controls autoplay muted></video>
+
+                <!-- Video Player Section -->
+                <div class="col-md-9">
+                    <div class="player-section">
+                        <!-- URL Input -->
+                        <div class="input-group mb-3 url-input-group">
+                            <span class="input-group-text">
+                                <i class="bi bi-link-45deg"></i>
+                            </span>
+                            <input type="text" id="m3uURL" class="form-control" placeholder="Ingresa la URL de tu lista M3U...">
+                            <button id="loadM3U" class="btn btn-primary btn-go">
+                                <i class="bi bi-play-fill"></i> Cargar
+                            </button>
+                        </div>
+
+                        <!-- Video Player -->
+                        <div class="video-wrapper">
+                            <video id="videoPlayer" controls autoplay muted></video>
+                            <div id="videoPlaceholder" class="video-placeholder">
+                                <i class="bi bi-tv display-1"></i>
+                                <p class="placeholder-text">Selecciona un canal para comenzar</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
+
+    <!-- Billed Message -->
     <div id="billedMsg" class="billed-msg d-none"></div>
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"
@@ -84,259 +84,6 @@
         integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous">
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.3.0/shaka-player.compiled.js"></script>
-    <script>
-        // Define an array to store all playlist items
-        let playlistItems = [];
-        let player = null;
-
-        document.addEventListener("DOMContentLoaded", function () {
-            const videoPlayer = document.getElementById("videoPlayer");
-            const playlist = document.getElementById("playlist");
-            const loadM3UButton = document.getElementById("loadM3U");
-            const m3uURLInput = document.getElementById("m3uURL");
-            const billedMsgElement = document.getElementById("billedMsg");
-            const searchInput = document.getElementById("searchInput");
-
-            //  Get playlist url from url if any
-            var urlParams = new URLSearchParams(window.location.search);
-            var playlistParam = urlParams.get('playlist');
-            if (playlistParam != null) {
-                localStorage.setItem("m3uPlaylistURL", playlistParam);
-            }
-
-            // Load search input from local storage
-            const savedPlaylistURL = localStorage.getItem("m3uPlaylistURL");
-            if (savedPlaylistURL) {
-                m3uURLInput.value = savedPlaylistURL;
-                // Automatically load the saved playlist
-                setTimeout(function () {
-                    loadM3UButton.click();
-                }, 500);
-            }
-
-            loadM3UButton.addEventListener("click", () => {
-                const m3uURL = m3uURLInput.value;
-                // Save search input to local storage
-                localStorage.setItem("m3uPlaylistURL", m3uURL);
-
-                // Load and parse the M3U file from the user-provided URL
-                fetch(m3uURL)
-                    .then(response => response.text())
-                    .then(data => {
-                        videoPlayer.innerHTML = ''; // Clear the video player
-                        clearPlaylist(); // clear channel list
-
-                        data = trimLineBreak(data);
-                        const blocks = data.split('\n\n');
-                        let tvgName = '';
-                        let tvgLogo = '';
-                        let billedMsg = '';
-
-                        for (let i = 0; i < blocks.length; i++) {
-                            var items = [];
-                            var lines = blocks[i].split('\n');
-
-                            items[i] = { 'key': '', 'tvgName': '', 'tvgLogo': '', 'source': '' };
-                            for (let j = 0; j < lines.length; j++) {
-                                const line = lines[j].trim();
-                                
-                                // Check for the #EXTM3U line with billed-msg
-                                if (line.startsWith("#EXTM3U")) {
-                                    const billedMsgMatch = line.match(/billed-msg="([^"]+)"/);
-                                    if (billedMsgMatch) {
-                                        billedMsg = billedMsgMatch[1];
-                                    }
-                                }
-
-                                // Check for license key
-                                if (line.startsWith("#KODIPROP:inputstream.adaptive.license_key=")) {
-                                    var keyInfo = extractKey(line);
-
-                                    if(keyInfo != null) {
-                                        items[i]['key'] = keyInfo;
-                                    }
-                                }
-
-                                // Check if it's an EXTINF line with tvg-name and tvg-logo
-                                if (line.startsWith("#EXTINF:")) {
-                                    const tvgNameMatch = line.match(/tvg-name="([^"]+)"/);
-                                    if (tvgNameMatch) {
-                                        tvgName = tvgNameMatch[1];
-                                    } else {
-                                        // Extract the last string after the last comma as tvg-name
-                                        var lastCommaIndex = line.lastIndexOf(",");
-                                        if (lastCommaIndex !== -1) {
-                                            tvgName = line.substring(lastCommaIndex + 1).trim();
-                                        } else {
-                                            tvgName = `Stream ${j + 1}`;
-                                        }   
-                                    }
-
-                                    const tvgLogoMatch = line.match(/tvg-logo="([^"]+)"/);
-                                    if (tvgLogoMatch) {
-                                        tvgLogo = tvgLogoMatch[1];
-                                    }
-
-                                    items[i]['tvgName'] = tvgName;
-                                    items[i]['tvgLogo'] = convertToHttps(tvgLogo);
-                                }
-
-                                // Check if the line is not empty and not a comment
-                                if (line.length > 0 && !line.startsWith("#")) {
-                                    items[i]['source'] = convertToHttps(line);
-                                }
-                            }
-
-                            if(items.length > 0) {
-                                items = reorderIndexes(items);
-                                if(items[0].source != null && items[0].source != '') {
-                                    playlistItems.push(items);
-                                }
-                            }
-                        }
-
-                        // Render the playlist
-                        renderPlaylist(playlistItems);
-
-                        if(document.getElementsByClassName('channel').length > 0) {
-                            playlist.classList.remove("d-none");
-                        } else {
-                            playlist.classList.add("d-none");
-                        }
-
-                        if(billedMsg != '') {
-                            billedMsgElement.textContent = billedMsg;
-                            billedMsgElement.classList.remove("d-none");
-                        } else {
-                            billedMsgElement.classList.add("d-none");
-                        }
-                    })
-                    .catch(error => {
-                        console.error("Error loading the M3U file:", error);
-                    });
-            });
-
-            // Search input event listener
-            searchInput.addEventListener("input", () => {
-                const searchText = searchInput.value.trim().toLowerCase();
-
-                // Filter playlist items based on search input
-                const filteredItems = playlistItems.filter(item => {
-                return item[0].tvgName.toLowerCase().includes(searchText);
-                });
-
-                // Render the filtered playlist
-                clearPlaylist(false);
-                renderPlaylist(filteredItems);
-            });
-
-            // Function to render the playlist
-            function renderPlaylist(items) {
-                items.forEach((item, index) => {
-                    const playlistItem = document.createElement("div");
-                    playlistItem.className = "channel d-flex flex-column p-3";
-                    playlistItem.textContent = item[0].tvgName;
-
-                    if (item[0].tvgLogo) {
-                        const logoImage = document.createElement("img");
-                        logoImage.src = item[0].tvgLogo;
-                        logoImage.className = "tv-logo";
-                        playlistItem.appendChild(logoImage);
-                    }
-
-                    playlistItem.addEventListener("click", async () => {
-                        // If a player instance exists, destroy it before creating a new one
-                        if (player !== null) {
-                            await player.destroy();
-                        }
-
-                        // Init Shaka Player
-                        player = new shaka.Player(videoPlayer);
-
-                        if (item[0].key.key_id !== '' && item[0].key.key !== '') {
-                            player.configure({
-                                drm: {
-                                    clearKeys: {
-                                        [item[0].key.key_id]: item[0].key.key
-                                    }
-                                }
-                            });
-                        }
-
-                        await player.load(item[0].source);
-
-                        // Scroll to the video player
-                        videoPlayer.scrollIntoView({ behavior: 'smooth' });
-                    });
-
-                    playlist.appendChild(playlistItem);
-                });
-            }
-        });
-
-        function clearPlaylist(clearItems = true) {
-            // Clear the existing playlist items
-            if(clearItems) {
-                playlistItems = [];
-            }
-            
-            const playlistItemsElem = playlist.querySelectorAll('.channel');
-            playlistItemsElem.forEach(item => item.remove());
-        }
-
-        function trimLineBreak(text) {
-            // Replace multiple line breaks with a single line break
-            return text.replace(/[\r\n]{2,}/g, '\n\n');
-        }
-
-        function reorderIndexes(items) {
-            let rearrangedItems = [];
-
-            items.forEach(item => {
-                if (item !== undefined) {
-                    rearrangedItems.push(item);
-                }
-            });
-
-            return rearrangedItems;
-        }
-
-        function base64ToHex(base64) {
-            if (base64.length > 0) {
-                const binary = atob(base64);
-                let hex = '';
-                for (let i = 0; i < binary.length; i++) {
-                    let char = binary.charCodeAt(i).toString(16);
-                    hex += (char.length === 1 ? '0' : '') + char;
-                }
-                return hex;
-            }
-            return base64;
-        }
-
-        function convertToHttps(url) {
-            return url.replace(/^http:/, 'https:');
-        }
-
-        function extractKey(line) {
-            const prefix = '#KODIPROP:inputstream.adaptive.license_key=';
-            const extractedValue = line.substring(line.indexOf(prefix) + prefix.length);
-
-            try {
-                var json = JSON.parse(extractedValue);
-                if (json && json.keys.length > 0) {
-                    const KEY = base64ToHex(json.keys[0].k); // Value of 'k' (KEY)
-                    const ID = base64ToHex(json.keys[0].kid); // Value of 'kid' (ID)
-
-                    return {'key_id': ID, 'key': KEY};
-                } else {
-                    return null;
-                }
-            } catch (error) {
-                return null;
-            }
-        }
-
-    </script>
+    <script src="js/app.js"></script>
 </body>
 </html>
